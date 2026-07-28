@@ -1,5 +1,10 @@
 # eRede SDK
 
+[![Packagist](https://img.shields.io/packagist/v/joshua-barbosa/erede-sdk.svg)](https://packagist.org/packages/joshua-barbosa/erede-sdk)
+[![Tests](https://github.com/joshua-barbosa/erede-sdk/actions/workflows/tests.yml/badge.svg)](https://github.com/joshua-barbosa/erede-sdk/actions/workflows/tests.yml)
+[![PHP](https://img.shields.io/packagist/dependency-v/joshua-barbosa/erede-sdk/php.svg)](https://packagist.org/packages/joshua-barbosa/erede-sdk)
+[![License](https://img.shields.io/packagist/l/joshua-barbosa/erede-sdk.svg)](LICENSE)
+
 SDK PHP para a API [eRede](https://developer.userede.com.br/e-rede) (Rede) com autenticação OAuth 2.0, integrado ao Laravel.
 
 Suporta **Laravel 11, 12 e 13** / **PHP 8.2+**.
@@ -17,24 +22,15 @@ Suporta **Laravel 11, 12 e 13** / **PHP 8.2+**.
 
 ## Instalação
 
-Enquanto o pacote não estiver no Packagist, declare o repositório no `composer.json` da aplicação:
-
-```json
-{
-    "repositories": [
-        { "type": "vcs", "url": "git@github.com:joshua-barbosa/erede-sdk.git" }
-    ]
-}
-```
-
 ```bash
-composer require joshua-barbosa/erede-sdk:^0.1
+composer require joshua-barbosa/erede-sdk
 ```
 
-Isso exige apenas uma tag no repositório (`git tag v0.1.0 && git push --tags`). Autenticação via
-`composer config --global --auth github-oauth.github.com <token>`, ou `COMPOSER_AUTH` no deploy.
+O ServiceProvider é descoberto automaticamente — nada a registrar manualmente.
 
-Depois de publicar no Packagist, o bloco `repositories` deixa de ser necessário.
+> O pacote está em `0.x`: a API pública ainda pode mudar. Fixe em `^0.1` se quiser
+> proteção contra quebras, já que o SemVer permite alterações incompatíveis entre
+> versões `0.x` diferentes.
 
 ### Desenvolvimento local
 
@@ -49,11 +45,17 @@ Para editar o pacote e ver o efeito imediato na aplicação, use um repositório
 }
 ```
 
-O ServiceProvider é descoberto automaticamente. Publique a configuração:
+Com `symlink: true` o Composer aponta o `vendor/` para a sua cópia local: você edita o pacote e o
+efeito é imediato, sem `composer update`.
+
+### Publicar a configuração
 
 ```bash
 php artisan vendor:publish --tag=erede-config
 ```
+
+Isso cria `config/erede.php` na aplicação. O pacote funciona sem publicar — os padrões vêm do
+próprio arquivo interno —, mas publicar é o caminho para versionar ajustes de timeout, cache e log.
 
 ## Configuração
 
