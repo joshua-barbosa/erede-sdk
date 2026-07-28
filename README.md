@@ -4,6 +4,7 @@
 [![Tests](https://github.com/joshua-barbosa/erede-sdk/actions/workflows/tests.yml/badge.svg)](https://github.com/joshua-barbosa/erede-sdk/actions/workflows/tests.yml)
 [![PHP](https://img.shields.io/packagist/dependency-v/joshua-barbosa/erede-sdk/php.svg)](https://packagist.org/packages/joshua-barbosa/erede-sdk)
 [![License](https://img.shields.io/packagist/l/joshua-barbosa/erede-sdk.svg)](LICENSE)
+[![Buy Me A Coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-%E2%98%95-FFDD00)](https://www.buymeacoffee.com/joshuabarbosa)
 
 SDK PHP para a API [eRede](https://developer.userede.com.br/e-rede) (Rede) com autenticação OAuth 2.0, integrado ao Laravel.
 
@@ -271,6 +272,15 @@ Herdadas da versão original e mantidas para não alterar comportamento nesta ex
 
 - `Amount::getConvertedAmount()` e `Transaction::setAmount()` usam `ceil()` sobre `float * 100`. Funciona para os valores usuais, mas arredonda para cima; migrar para `intval(round(...))` ou `bcmath` seria mais seguro para dinheiro.
 - `Traits\Attribute::set()` recebe 2 parâmetros, mas `Classes\Link`, `Classes\Status` e `Responses\TransactionGet` a chamam com 3. O terceiro é ignorado pelo PHP; é código morto, não um defeito.
+
+## Apoie
+
+Este pacote é mantido nas horas vagas. Se ele te poupou algumas horas de briga com
+a API da Rede, [me paga um café](https://www.buymeacoffee.com/joshuabarbosa) ☕ — ajuda
+a manter a compatibilidade em dia conforme o Laravel e a API da Rede evoluem.
+
+Contribuição de código também é bem-vinda: abra uma
+[issue](https://github.com/joshua-barbosa/erede-sdk/issues) ou um PR.
 
 ## Licença
 

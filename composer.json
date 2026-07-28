@@ -14,6 +14,12 @@
         "issues": "https://github.com/joshua-barbosa/erede-sdk/issues",
         "source": "https://github.com/joshua-barbosa/erede-sdk"
     },
+    "funding": [
+        {
+            "type": "buy_me_a_coffee",
+            "url": "https://www.buymeacoffee.com/joshuabarbosa"
+        }
+    ],
     "require": {
         "php": "^8.2",
         "illuminate/contracts": "^11.0|^12.0|^13.0",
