@@ -1,0 +1,57 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.2'
+            laravel: '11.*'
+            testbench: '9.*'
+          - php: '8.3'
+            laravel: '12.*'
+            testbench: '10.*'
+          - php: '8.3'
+            laravel: '13.*'
+            testbench: '11.*'
+          - php: '8.4'
+            laravel: '13.*'
+            testbench: '11.*'
+
+    name: PHP ${{ matrix.php }} / Laravel ${{ matrix.laravel }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+
+      - name: Instalar dependências
+        run: |
+          # O Laravel 11 está EOL e todas as suas versões carregam advisories, o
+          # que faz o Composer 2.10+ recusar a resolução. Isso vale só para esta
+          # matriz de teste; a aplicação que consome o pacote decide por si.
+          composer config policy.advisories.block false
+
+          # illuminate/* está em "require", então usamos --with em vez de
+          # "require --dev", que moveria os pacotes para require-dev.
+          composer require --no-update --dev "orchestra/testbench:${{ matrix.testbench }}"
+          composer update -W --prefer-dist --no-interaction --no-progress \
+            --with "illuminate/contracts:${{ matrix.laravel }}" \
+            --with "illuminate/http:${{ matrix.laravel }}" \
+            --with "illuminate/support:${{ matrix.laravel }}"
+
+      - name: Versões resolvidas
+        run: composer show laravel/framework orchestra/testbench phpunit/phpunit || true
+
+      - name: Testes
+        run: vendor/bin/phpunit
