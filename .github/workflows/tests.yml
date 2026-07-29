@@ -12,6 +12,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - php: '8.0'
+            laravel: '8.*'
+            testbench: '6.*'
+          - php: '8.1'
+            laravel: '9.*'
+            testbench: '7.*'
+          - php: '8.1'
+            laravel: '10.*'
+            testbench: '8.*'
           - php: '8.2'
             laravel: '11.*'
             testbench: '9.*'
@@ -37,10 +46,16 @@ jobs:
 
       - name: Instalar dependências
         run: |
-          # O Laravel 11 está EOL e todas as suas versões carregam advisories, o
-          # que faz o Composer 2.10+ recusar a resolução. Isso vale só para esta
-          # matriz de teste; a aplicação que consome o pacote decide por si.
+          # Laravel 8 a 11 estão EOL e carregam advisories, o que faz o Composer
+          # 2.10+ recusar a resolução. Vale só para esta matriz de teste; a
+          # aplicação que consome o pacote decide por si.
           composer config policy.advisories.block false
+
+          # O Pint exige PHP 8.1+. É ferramenta de formatação, não afeta quem
+          # consome o pacote — nas linhas de PHP 8.0 ele simplesmente sai.
+          if [ "${{ matrix.php }}" = "8.0" ]; then
+            composer remove --dev laravel/pint --no-update
+          fi
 
           # illuminate/* está em "require", então usamos --with em vez de
           # "require --dev", que moveria os pacotes para require-dev.

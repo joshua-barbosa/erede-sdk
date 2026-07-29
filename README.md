@@ -8,18 +8,43 @@
 
 SDK PHP para a API [eRede](https://developer.userede.com.br/e-rede) (Rede) com autenticação OAuth 2.0, integrado ao Laravel.
 
-Suporta **Laravel 11, 12 e 13** / **PHP 8.2+**.
+Suporta **Laravel 8 a 13** / **PHP 8.0+**.
 
-| Laravel | PHP | Status |
-|---|---|---|
-| 13.x | 8.3 / 8.4 | Testado no CI |
-| 12.x | 8.3 | Testado no CI |
-| 11.x | 8.2 | Testado no CI — Laravel 11 está EOL, veja a nota abaixo |
+## Compatibilidade
 
-> **Laravel 11 está fora do suporte da Laravel** e todas as suas versões carregam
-> advisories de segurança. O Composer 2.10+ recusa instalá-lo por padrão; se a sua
-> aplicação ainda está em 11.x, ela já precisa lidar com isso independentemente deste
-> pacote. Para projetos novos, comece em 12.x ou 13.x.
+| Laravel | PHP | Testado no CI | Situação |
+|---|---|---|---|
+| 13.x | 8.3 · 8.4 | ✅ | Recomendado |
+| 12.x | 8.3 | ✅ | Recomendado |
+| 11.x | 8.2 | ✅ | ⚠️ Suporte a ser removido |
+| 10.x | 8.1 | ✅ | ⚠️ Suporte a ser removido |
+| 9.x | 8.1 | ✅ | ⚠️ Suporte a ser removido |
+| 8.x | 8.0 | ✅ | ⚠️ Suporte a ser removido |
+
+> ### ⚠️ Laravel 8, 9, 10 e 11 serão descontinuados
+>
+> O suporte a essas versões existe como **medida paliativa**, para que projetos
+> legados consigam usar o SDK enquanto a migração não acontece. Ele **será removido
+> numa versão futura**, sem prazo definido mas sem cerimônia — provavelmente na
+> primeira versão que precisar de um recurso mais novo do framework.
+>
+> Todas as quatro já estão **fora do suporte oficial da Laravel** e carregam
+> advisories de segurança conhecidas. Na prática isso significa que o Composer 2.10+
+> **recusa instalá-las por padrão** — se o seu projeto está numa delas, você já
+> convive com esse bloqueio, independentemente deste pacote.
+>
+> **Migre para o Laravel 12 ou 13.** Enquanto isso não é viável, fixe a versão do
+> SDK para não ser surpreendido quando o suporte cair:
+>
+> ```bash
+> composer require joshua-barbosa/erede-sdk:~0.2.0
+> ```
+>
+> O `~0.2.0` aceita correções (`0.2.1`, `0.2.2`) mas não sobe para `0.3.0`, que é
+> onde a remoção pode acontecer.
+
+O piso de PHP 8.0 custou alguns recursos de 8.1+ (`readonly`, `enum` nos testes).
+O que foi cedido e como reverter está em [docs/php-8.0-compat.md](docs/php-8.0-compat.md).
 
 ## Instalação
 
@@ -29,9 +54,9 @@ composer require joshua-barbosa/erede-sdk
 
 O ServiceProvider é descoberto automaticamente — nada a registrar manualmente.
 
-> O pacote está em `0.x`: a API pública ainda pode mudar. Fixe em `^0.1` se quiser
-> proteção contra quebras, já que o SemVer permite alterações incompatíveis entre
-> versões `0.x` diferentes.
+> O pacote está em `0.x`: a API pública ainda pode mudar. O SemVer permite alterações
+> incompatíveis entre versões `0.x` diferentes, então fixe em `~0.2.0` se quiser
+> proteção contra quebras — sobretudo se você depende do suporte a Laravel 8–11.
 
 ### Desenvolvimento local
 
@@ -243,14 +268,19 @@ composer install
 composer test
 ```
 
-115 testes, 364 asserções. Cobertura: **95,45% de linhas / 92,46% de métodos** (medida com PCOV em PHP 8.3).
+> **Desenvolver o pacote exige PHP 8.1+**, embora ele *rode* em 8.0. O motivo é o
+> `laravel/pint`, que exige 8.1. Para instalar as dependências de desenvolvimento em
+> PHP 8.0, remova-o antes: `composer remove --dev laravel/pint --no-update`. É o que
+> a linha de PHP 8.0 do CI faz.
+
+99 testes, 364 asserções. Cobertura: **94,94% de linhas / 92,46% de métodos** (medida com PCOV em PHP 8.3).
 
 A suíte usa `Http::fake()` — nenhuma requisição sai para a Rede.
 
 Para cobertura local:
 
 ```bash
-vendor/bin/phpunit --coverage-text        # requer pcov ou xdebug
+vendor/bin/phpunit --coverage-text --coverage-filter src   # requer pcov ou xdebug
 ```
 
 Nos testes da sua aplicação, faça o mesmo:

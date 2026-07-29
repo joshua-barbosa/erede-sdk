@@ -4,8 +4,6 @@ namespace eRede\Tests\Unit;
 
 use eRede\Support\Config;
 use eRede\Support\HttpOptions;
-use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 class HttpOptionsTest extends TestCase
@@ -16,16 +14,14 @@ class HttpOptionsTest extends TestCase
         return HttpOptions::fromConfig(new Config(pv: 'pv', token: 'token', http: $http));
     }
 
-    #[Test]
-    public function proxy_como_string_e_repassado_direto(): void
+    public function test_proxy_como_string_e_repassado_direto(): void
     {
         $options = $this->options(['proxy' => 'http://proxy.local:8080']);
 
         $this->assertSame('http://proxy.local:8080', $options['proxy']);
     }
 
-    #[Test]
-    public function proxy_por_protocolo_monta_o_array_do_guzzle(): void
+    public function test_proxy_por_protocolo_monta_o_array_do_guzzle(): void
     {
         $options = $this->options([
             'proxy' => ['http' => 'http://p1:8080', 'https' => 'http://p2:8443'],
@@ -34,8 +30,7 @@ class HttpOptionsTest extends TestCase
         $this->assertSame(['http' => 'http://p1:8080', 'https' => 'http://p2:8443'], $options['proxy']);
     }
 
-    #[Test]
-    public function a_lista_de_bypass_aceita_string_separada_por_virgula(): void
+    public function test_a_lista_de_bypass_aceita_string_separada_por_virgula(): void
     {
         $options = $this->options([
             'proxy' => ['http' => 'http://p:8080', 'no' => 'localhost, 127.0.0.1 ,.interno'],
@@ -44,23 +39,20 @@ class HttpOptionsTest extends TestCase
         $this->assertSame(['localhost', '127.0.0.1', '.interno'], $options['proxy']['no']);
     }
 
-    #[Test]
-    public function proxy_nao_configurado_nao_gera_a_opcao(): void
+    public function test_proxy_nao_configurado_nao_gera_a_opcao(): void
     {
         $this->assertArrayNotHasKey('proxy', $this->options([]));
         $this->assertArrayNotHasKey('proxy', $this->options(['proxy' => null]));
         $this->assertArrayNotHasKey('proxy', $this->options(['proxy' => '   ']));
     }
 
-    #[Test]
-    public function bypass_sem_proxy_definido_e_descartado(): void
+    public function test_bypass_sem_proxy_definido_e_descartado(): void
     {
         // Passar apenas `no` ao Guzzle não teria efeito nenhum.
         $this->assertArrayNotHasKey('proxy', $this->options(['proxy' => ['no' => 'localhost']]));
     }
 
-    #[Test]
-    public function env_vazio_nao_vira_proxy(): void
+    public function test_env_vazio_nao_vira_proxy(): void
     {
         // env('EREDE_PROXY') ausente devolve null nas duas chaves.
         $options = $this->options(['proxy' => ['http' => null, 'https' => null, 'no' => null]]);
@@ -68,16 +60,11 @@ class HttpOptionsTest extends TestCase
         $this->assertArrayNotHasKey('proxy', $options);
     }
 
-    #[Test]
-    #[DataProvider('verifyProvider')]
-    public function verify_normaliza_strings_vindas_do_env(mixed $input, bool|string $expected): void
+    public function test_verify_normaliza_strings_vindas_do_env(): void
     {
-        $this->assertSame($expected, $this->options(['verify' => $input])['verify']);
-    }
-
-    public static function verifyProvider(): array
-    {
-        return [
+        // Em laço, e não em data provider: atributos e anotações de provider
+        // divergem entre PHPUnit 9 (Laravel 8) e 12, e o laço funciona em todos.
+        $casos = [
             'bool false' => [false, false],
             'bool true' => [true, true],
             'string false' => ['false', false],
@@ -85,10 +72,17 @@ class HttpOptionsTest extends TestCase
             'zero' => ['0', false],
             'ca bundle' => ['/etc/ssl/certs/ca.pem', '/etc/ssl/certs/ca.pem'],
         ];
+
+        foreach ($casos as $nome => [$input, $esperado]) {
+            $this->assertSame(
+                $esperado,
+                $this->options(['verify' => $input])['verify'],
+                "caso: {$nome}",
+            );
+        }
     }
 
-    #[Test]
-    public function connect_timeout_sempre_acompanha_as_opcoes(): void
+    public function test_connect_timeout_sempre_acompanha_as_opcoes(): void
     {
         $this->assertSame(10, $this->options([])['connect_timeout']);
         $this->assertSame(5, $this->options(['connect_timeout' => 5])['connect_timeout']);

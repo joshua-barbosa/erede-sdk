@@ -9,7 +9,6 @@ use eRede\Exceptions\eRedeException;
 use eRede\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
-use PHPUnit\Framework\Attributes\Test;
 
 class RefundsTest extends TestCase
 {
@@ -17,7 +16,10 @@ class RefundsTest extends TestCase
     {
         parent::setUp();
 
-        Http::preventStrayRequests();
+        // Só existe a partir do Laravel 8.66; no 8.x antigo simplesmente não trava.
+        if (method_exists(Http::getFacadeRoot(), 'preventStrayRequests')) {
+            Http::preventStrayRequests();
+        }
     }
 
     private function fakeAuth(array $additional = []): void
@@ -33,8 +35,7 @@ class RefundsTest extends TestCase
         return $this->app->make(eRede::class);
     }
 
-    #[Test]
-    public function cria_um_estorno_com_valor_em_centavos_e_url_de_callback(): void
+    public function test_cria_um_estorno_com_valor_em_centavos_e_url_de_callback(): void
     {
         $this->fakeAuth(['*/refunds' => Http::response(['refundId' => 'r-1', 'returnCode' => '00'])]);
 
@@ -57,8 +58,7 @@ class RefundsTest extends TestCase
         });
     }
 
-    #[Test]
-    public function create_aceita_tid_explicito_sobrescrevendo_o_do_componente(): void
+    public function test_create_aceita_tid_explicito_sobrescrevendo_o_do_componente(): void
     {
         $this->fakeAuth(['*/refunds' => Http::response(['returnCode' => '00'])]);
 
@@ -71,8 +71,7 @@ class RefundsTest extends TestCase
         Http::assertSent(fn ($request) => str_contains($request->url(), '/v1/transactions/999/refunds'));
     }
 
-    #[Test]
-    public function consulta_um_estorno_por_id(): void
+    public function test_consulta_um_estorno_por_id(): void
     {
         $this->fakeAuth(['*/refunds/r-1' => Http::response(['refundId' => 'r-1', 'status' => 'CONFIRMED'])]);
 
@@ -82,8 +81,7 @@ class RefundsTest extends TestCase
         Http::assertSent(fn ($request) => str_contains($request->url(), '/v1/transactions/123/refunds/r-1'));
     }
 
-    #[Test]
-    public function lista_estornos_por_tid_e_hidrata_o_refund_aninhado(): void
+    public function test_lista_estornos_por_tid_e_hidrata_o_refund_aninhado(): void
     {
         $this->fakeAuth([
             '*/refunds' => Http::response([
@@ -97,8 +95,7 @@ class RefundsTest extends TestCase
         $this->assertSame('r-1', $lista->getRefunds()->getRefundId());
     }
 
-    #[Test]
-    public function set_tid_e_get_tid_do_componente(): void
+    public function test_set_tid_e_get_tid_do_componente(): void
     {
         $this->fakeAuth();
 
@@ -109,8 +106,7 @@ class RefundsTest extends TestCase
         $this->assertSame('123', $refunds->getTid());
     }
 
-    #[Test]
-    public function operacao_sem_tid_lanca_argumento_invalido(): void
+    public function test_operacao_sem_tid_lanca_argumento_invalido(): void
     {
         $this->fakeAuth();
 
@@ -120,8 +116,7 @@ class RefundsTest extends TestCase
         $this->erede()->transactions()->refunds()->getByTid();
     }
 
-    #[Test]
-    public function get_sem_refund_id_lanca_argumento_invalido(): void
+    public function test_get_sem_refund_id_lanca_argumento_invalido(): void
     {
         $this->fakeAuth();
 
@@ -131,8 +126,7 @@ class RefundsTest extends TestCase
         $this->erede()->transactions('123')->refunds()->get(null);
     }
 
-    #[Test]
-    public function erro_no_estorno_vira_excecao_de_dominio(): void
+    public function test_erro_no_estorno_vira_excecao_de_dominio(): void
     {
         $this->fakeAuth(['*/refunds' => Http::response(['returnCode' => '3'], 400)]);
 

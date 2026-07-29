@@ -1,7 +1,15 @@
 {
     "name": "joshua-barbosa/erede-sdk",
     "description": "SDK PHP para a API eRede (Rede) com autenticação OAuth 2.0, integrado ao Laravel.",
-    "keywords": ["erede", "rede", "laravel", "pagamento", "payment", "gateway", "sdk"],
+    "keywords": [
+        "erede",
+        "rede",
+        "laravel",
+        "pagamento",
+        "payment",
+        "gateway",
+        "sdk"
+    ],
     "type": "library",
     "license": "MIT",
     "homepage": "https://github.com/joshua-barbosa/erede-sdk",
@@ -21,17 +29,17 @@
         }
     ],
     "require": {
-        "php": "^8.2",
-        "illuminate/contracts": "^11.0|^12.0|^13.0",
-        "illuminate/http": "^11.0|^12.0|^13.0",
-        "illuminate/support": "^11.0|^12.0|^13.0",
+        "php": "^8.0",
+        "illuminate/contracts": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
+        "illuminate/http": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
+        "illuminate/support": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
         "guzzlehttp/guzzle": "^7.5",
         "psr/log": "^1.1|^2.0|^3.0",
-        "symfony/http-foundation": "^7.0|^8.0"
+        "symfony/http-foundation": "^5.4|^6.0|^7.0|^8.0"
     },
     "require-dev": {
-        "orchestra/testbench": "^9.0|^10.0|^11.0",
-        "phpunit/phpunit": "^10.5|^11.0|^12.0",
+        "orchestra/testbench": "^6.0|^7.0|^8.0|^9.0|^10.0|^11.0",
+        "phpunit/phpunit": "^9.5|^10.5|^11.0|^12.0",
         "laravel/pint": "^1.13"
     },
     "autoload": {

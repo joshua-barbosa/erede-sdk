@@ -9,7 +9,6 @@ use eRede\Exceptions\eRedeException;
 use eRede\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
-use PHPUnit\Framework\Attributes\Test;
 
 class TransactionsTest extends TestCase
 {
@@ -17,7 +16,10 @@ class TransactionsTest extends TestCase
     {
         parent::setUp();
 
-        Http::preventStrayRequests();
+        // Só existe a partir do Laravel 8.66; no 8.x antigo simplesmente não trava.
+        if (method_exists(Http::getFacadeRoot(), 'preventStrayRequests')) {
+            Http::preventStrayRequests();
+        }
     }
 
     private function fakeAuth(array $additional = []): void
@@ -34,8 +36,7 @@ class TransactionsTest extends TestCase
             ->creditCard('5448280000000007', '123', 12, 2030, 'JOAO DA SILVA');
     }
 
-    #[Test]
-    public function cria_uma_transacao_de_credito(): void
+    public function test_cria_uma_transacao_de_credito(): void
     {
         $this->fakeAuth([
             '*/v2/transactions' => Http::response([
@@ -56,8 +57,7 @@ class TransactionsTest extends TestCase
         $this->assertSame(1050, $response->getAmount());
     }
 
-    #[Test]
-    public function o_valor_enviado_vai_em_centavos(): void
+    public function test_o_valor_enviado_vai_em_centavos(): void
     {
         $this->fakeAuth(['*/v2/transactions' => Http::response(['returnCode' => '00'])]);
 
@@ -72,8 +72,7 @@ class TransactionsTest extends TestCase
         });
     }
 
-    #[Test]
-    public function o_bearer_token_obtido_no_oauth_e_reenviado_na_transacao(): void
+    public function test_o_bearer_token_obtido_no_oauth_e_reenviado_na_transacao(): void
     {
         $this->fakeAuth(['*/v2/transactions' => Http::response(['returnCode' => '00'])]);
 
@@ -88,8 +87,7 @@ class TransactionsTest extends TestCase
         });
     }
 
-    #[Test]
-    public function erro_com_return_code_traduz_a_mensagem_da_rede(): void
+    public function test_erro_com_return_code_traduz_a_mensagem_da_rede(): void
     {
         $this->fakeAuth([
             '*/v2/transactions' => Http::response(['returnCode' => '3'], 400),
@@ -105,8 +103,7 @@ class TransactionsTest extends TestCase
         }
     }
 
-    #[Test]
-    public function erro_401_reporta_falha_de_conexao(): void
+    public function test_erro_401_reporta_falha_de_conexao(): void
     {
         $this->fakeAuth(['*/v2/transactions' => Http::response(['returnCode' => '3'], 401)]);
 
@@ -116,8 +113,7 @@ class TransactionsTest extends TestCase
         $this->app->make(eRede::class)->transactions()->create($this->transaction());
     }
 
-    #[Test]
-    public function erro_sem_return_code_ainda_lanca_excecao(): void
+    public function test_erro_sem_return_code_ainda_lanca_excecao(): void
     {
         $this->fakeAuth(['*/v2/transactions' => Http::response('<html>502</html>', 502)]);
 
@@ -126,8 +122,7 @@ class TransactionsTest extends TestCase
         $this->app->make(eRede::class)->transactions()->create($this->transaction());
     }
 
-    #[Test]
-    public function consulta_por_tid_monta_a_url_e_hidrata_authorization(): void
+    public function test_consulta_por_tid_monta_a_url_e_hidrata_authorization(): void
     {
         $this->fakeAuth([
             '*/v2/transactions/123*' => Http::response([
@@ -147,8 +142,7 @@ class TransactionsTest extends TestCase
         $this->assertSame(1050, $response->getAuthorization()->getAmount());
     }
 
-    #[Test]
-    public function return_code_dentro_de_authorization_tambem_e_traduzido(): void
+    public function test_return_code_dentro_de_authorization_tambem_e_traduzido(): void
     {
         $this->fakeAuth([
             '*/v2/transactions/123*' => Http::response([
@@ -162,8 +156,7 @@ class TransactionsTest extends TestCase
         $this->app->make(eRede::class)->transactions('123')->get();
     }
 
-    #[Test]
-    public function consulta_sem_tid_lanca_argumento_invalido(): void
+    public function test_consulta_sem_tid_lanca_argumento_invalido(): void
     {
         $this->fakeAuth();
 
@@ -172,8 +165,7 @@ class TransactionsTest extends TestCase
         $this->app->make(eRede::class)->transactions()->get();
     }
 
-    #[Test]
-    public function captura_envia_o_valor_convertido_via_put(): void
+    public function test_captura_envia_o_valor_convertido_via_put(): void
     {
         $this->fakeAuth(['*/v2/transactions/123' => Http::response(['returnCode' => '00'])]);
 
@@ -188,8 +180,7 @@ class TransactionsTest extends TestCase
         });
     }
 
-    #[Test]
-    public function refunds_herda_o_tid_da_transacao(): void
+    public function test_refunds_herda_o_tid_da_transacao(): void
     {
         $this->fakeAuth(['*/refunds*' => Http::response(['returnCode' => '00'])]);
 

@@ -4,13 +4,11 @@ namespace eRede\Tests\Unit;
 
 use eRede\Exceptions\ConfigurationException;
 use eRede\Support\Config;
-use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 class ConfigTest extends TestCase
 {
-    #[Test]
-    public function from_array_le_o_formato_publicado_do_config(): void
+    public function test_from_array_le_o_formato_publicado_do_config(): void
     {
         $config = Config::fromArray([
             'pv' => 'meu-pv',
@@ -27,8 +25,7 @@ class ConfigTest extends TestCase
         $this->assertSame(10, $config->connectTimeout());
     }
 
-    #[Test]
-    public function strings_vazias_contam_como_ausencia_de_valor(): void
+    public function test_strings_vazias_contam_como_ausencia_de_valor(): void
     {
         $config = Config::fromArray(['pv' => '   ', 'token' => '']);
 
@@ -36,8 +33,7 @@ class ConfigTest extends TestCase
         $this->assertNull($config->token);
     }
 
-    #[Test]
-    public function with_nao_muta_a_instancia_original(): void
+    public function test_with_nao_muta_a_instancia_original(): void
     {
         $original = new Config(pv: 'pv-1', token: 'token-1', env: 'sandbox');
         $novo = $original->with(pv: 'pv-2');
@@ -47,8 +43,7 @@ class ConfigTest extends TestCase
         $this->assertNotSame($original, $novo);
     }
 
-    #[Test]
-    public function with_ignora_argumentos_nulos_e_preserva_o_resto(): void
+    public function test_with_ignora_argumentos_nulos_e_preserva_o_resto(): void
     {
         $config = (new Config(pv: 'pv-1', token: 'token-1', env: 'production'))
             ->with(pv: null, token: null, env: null);
@@ -58,24 +53,21 @@ class ConfigTest extends TestCase
         $this->assertSame('production', $config->env);
     }
 
-    #[Test]
-    public function validate_exige_credenciais(): void
+    public function test_validate_exige_credenciais(): void
     {
         $this->expectException(ConfigurationException::class);
 
         (new Config(pv: 'pv', token: null))->validate();
     }
 
-    #[Test]
-    public function validate_rejeita_ambiente_desconhecido(): void
+    public function test_validate_rejeita_ambiente_desconhecido(): void
     {
         $this->expectException(ConfigurationException::class);
 
         (new Config(pv: 'pv', token: 'token', env: 'staging'))->validate();
     }
 
-    #[Test]
-    public function a_chave_de_cache_isola_ambiente_e_pv(): void
+    public function test_a_chave_de_cache_isola_ambiente_e_pv(): void
     {
         $sandbox = new Config(pv: 'pv-1', token: 't', env: 'sandbox');
         $producao = new Config(pv: 'pv-1', token: 't', env: 'production');
@@ -87,8 +79,7 @@ class ConfigTest extends TestCase
         $this->assertStringNotContainsString('pv-1', $sandbox->cacheKey());
     }
 
-    #[Test]
-    public function timeouts_nunca_sao_zero_ou_negativos(): void
+    public function test_timeouts_nunca_sao_zero_ou_negativos(): void
     {
         $config = new Config(pv: 'pv', token: 't', http: [
             'timeout' => 0,

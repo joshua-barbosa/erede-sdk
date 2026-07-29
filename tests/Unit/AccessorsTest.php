@@ -14,8 +14,6 @@ use eRede\Responses\Refund as ResponsesRefund;
 use eRede\Responses\RefundGet;
 use eRede\Responses\Transaction as ResponsesTransaction;
 use eRede\Responses\TransactionGet;
-use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
@@ -62,9 +60,19 @@ class AccessorsTest extends TestCase
         ];
     }
 
-    #[Test]
-    #[DataProvider('dtos')]
-    public function todo_setter_tem_getter_e_faz_round_trip(string $class, array $args): void
+    public function test_todo_setter_tem_getter_e_faz_round_trip(): void
+    {
+        // Em laço, e não em data provider: atributos e anotações de provider
+        // divergem entre PHPUnit 9 (Laravel 8) e 12, e o laço funciona em todos.
+        foreach (self::dtos() as [$class, $args]) {
+            $this->assertRoundTrip($class, $args);
+        }
+    }
+
+    /**
+     * @param  array<int,mixed>  $args
+     */
+    private function assertRoundTrip(string $class, array $args): void
     {
         $dto = new $class(...$args);
         $reflection = new ReflectionClass($dto);
@@ -105,8 +113,7 @@ class AccessorsTest extends TestCase
         $this->assertGreaterThan(0, $exercitados, "Nenhum setter exercitado em {$class}.");
     }
 
-    #[Test]
-    public function set_amount_de_transaction_converte_para_centavos_na_escrita(): void
+    public function test_set_amount_de_transaction_converte_para_centavos_na_escrita(): void
     {
         // Documenta a exclusão acima: a assimetria é intencional.
         $transaction = new Transaction;

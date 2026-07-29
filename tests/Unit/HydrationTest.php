@@ -12,7 +12,6 @@ use eRede\Responses\Refund as ResponsesRefund;
 use eRede\Responses\RefundGet;
 use eRede\Responses\Transaction as ResponsesTransaction;
 use eRede\Responses\TransactionGet;
-use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -20,8 +19,7 @@ use PHPUnit\Framework\TestCase;
  */
 class HydrationTest extends TestCase
 {
-    #[Test]
-    public function response_transaction_hidrata_campos_e_links(): void
+    public function test_response_transaction_hidrata_campos_e_links(): void
     {
         $dto = new ResponsesTransaction(fromData: [
             'reference' => 'pedido-1',
@@ -49,16 +47,14 @@ class HydrationTest extends TestCase
         $this->assertSame('https://api/v1/refunds', $dto->getLinks()[1]->getHref());
     }
 
-    #[Test]
-    public function response_transaction_sem_links_mantem_a_lista_nula(): void
+    public function test_response_transaction_sem_links_mantem_a_lista_nula(): void
     {
         $dto = new ResponsesTransaction(fromData: ['tid' => '1']);
 
         $this->assertNull($dto->getLinks());
     }
 
-    #[Test]
-    public function transaction_get_hidrata_authorization_e_capture(): void
+    public function test_transaction_get_hidrata_authorization_e_capture(): void
     {
         $dto = new TransactionGet(fromData: [
             'authorization' => [
@@ -90,8 +86,7 @@ class HydrationTest extends TestCase
         $this->assertCount(1, $dto->getLinks());
     }
 
-    #[Test]
-    public function transaction_get_com_capture_ausente(): void
+    public function test_transaction_get_com_capture_ausente(): void
     {
         $dto = new TransactionGet(fromData: ['authorization' => ['tid' => '123']]);
 
@@ -99,8 +94,7 @@ class HydrationTest extends TestCase
         $this->assertNull($dto->getCapture());
     }
 
-    #[Test]
-    public function response_refund_hidrata_status_history_e_links(): void
+    public function test_response_refund_hidrata_status_history_e_links(): void
     {
         $dto = new ResponsesRefund(fromData: [
             'returnCode' => '00',
@@ -124,8 +118,7 @@ class HydrationTest extends TestCase
         $this->assertCount(1, $dto->getLinks());
     }
 
-    #[Test]
-    public function refund_get_hidrata_o_refund_aninhado(): void
+    public function test_refund_get_hidrata_o_refund_aninhado(): void
     {
         $dto = new RefundGet(fromData: [
             'refunds' => ['refundId' => 'r-1', 'status' => 'CONFIRMED', 'amount' => 1050],
@@ -138,8 +131,7 @@ class HydrationTest extends TestCase
         $this->assertCount(1, $dto->getLinks());
     }
 
-    #[Test]
-    public function refund_get_com_refunds_nao_array_gera_refund_vazio(): void
+    public function test_refund_get_com_refunds_nao_array_gera_refund_vazio(): void
     {
         $dto = new RefundGet(fromData: ['refunds' => 'inesperado']);
 
@@ -147,8 +139,7 @@ class HydrationTest extends TestCase
         $this->assertNull($dto->getRefunds()->getRefundId());
     }
 
-    #[Test]
-    public function link_e_status_hidratam_via_from_data(): void
+    public function test_link_e_status_hidratam_via_from_data(): void
     {
         $link = new Link(fromData: ['method' => 'GET', 'rel' => 'self', 'href' => 'https://api/x']);
         $status = new Status(fromData: ['status' => 'CONFIRMED', 'dateTime' => '2026-07-28T11:00:00']);
@@ -159,8 +150,7 @@ class HydrationTest extends TestCase
         $this->assertSame('2026-07-28T11:00:00', $status->getDateTime());
     }
 
-    #[Test]
-    public function argumentos_nomeados_do_construtor_tambem_populam(): void
+    public function test_argumentos_nomeados_do_construtor_tambem_populam(): void
     {
         $link = new Link(method: 'POST', rel: 'refund', href: 'https://api/y');
 
@@ -168,16 +158,14 @@ class HydrationTest extends TestCase
         $this->assertSame('refund', $link->getRel());
     }
 
-    #[Test]
-    public function return_response_traduz_codigos_conhecidos(): void
+    public function test_return_response_traduz_codigos_conhecidos(): void
     {
         $this->assertTrue(ReturnResponse::existsReturnCode('00'));
         $this->assertSame('Sucesso', ReturnResponse::getReturnMessage('00'));
         $this->assertSame('Parâmetro obrigatório não está presente', ReturnResponse::getReturnMessage('3'));
     }
 
-    #[Test]
-    public function return_response_lida_com_codigo_desconhecido_ou_nulo(): void
+    public function test_return_response_lida_com_codigo_desconhecido_ou_nulo(): void
     {
         $this->assertFalse(ReturnResponse::existsReturnCode('codigo-inexistente'));
         $this->assertIsString(ReturnResponse::getReturnMessage('codigo-inexistente'));

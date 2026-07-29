@@ -8,12 +8,10 @@ use eRede\Support\Config;
 use eRede\Support\HttpOptions;
 use eRede\Tests\TestCase;
 use Illuminate\Support\Facades\Http;
-use PHPUnit\Framework\Attributes\Test;
 
 class ConfigurationTest extends TestCase
 {
-    #[Test]
-    public function o_canal_de_log_erede_e_registrado_automaticamente(): void
+    public function test_o_canal_de_log_erede_e_registrado_automaticamente(): void
     {
         $channel = $this->app->make('config')->get('logging.channels.erede');
 
@@ -21,8 +19,7 @@ class ConfigurationTest extends TestCase
         $this->assertSame('daily', $channel['driver']);
     }
 
-    #[Test]
-    public function o_canal_definido_pela_aplicacao_tem_precedencia(): void
+    public function test_o_canal_definido_pela_aplicacao_tem_precedencia(): void
     {
         $this->app->make('config')->set('logging.channels.erede', ['driver' => 'single', 'path' => '/tmp/meu.log']);
 
@@ -32,8 +29,7 @@ class ConfigurationTest extends TestCase
         $this->assertSame('single', $this->app->make('config')->get('logging.channels.erede.driver'));
     }
 
-    #[Test]
-    public function o_proxy_configurado_chega_nas_opcoes_da_requisicao(): void
+    public function test_o_proxy_configurado_chega_nas_opcoes_da_requisicao(): void
     {
         $this->app->make('config')->set('erede.http.proxy', [
             'http' => 'http://proxy.local:8080',
@@ -56,14 +52,12 @@ class ConfigurationTest extends TestCase
         Http::assertSentCount(1);
     }
 
-    #[Test]
-    public function o_singleton_do_container_devolve_sempre_a_mesma_instancia(): void
+    public function test_o_singleton_do_container_devolve_sempre_a_mesma_instancia(): void
     {
         $this->assertSame($this->app->make(eRede::class), $this->app->make('erede'));
     }
 
-    #[Test]
-    public function argumentos_explicitos_sobrescrevem_apenas_o_que_foi_informado(): void
+    public function test_argumentos_explicitos_sobrescrevem_apenas_o_que_foi_informado(): void
     {
         $this->app->make('config')->set('erede.http.timeout', 42);
 

@@ -6,7 +6,6 @@ use eRede\Support\Config;
 use eRede\Support\Logger;
 use Illuminate\Container\Container;
 use InvalidArgumentException;
-use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use Psr\Log\NullLogger;
@@ -47,8 +46,7 @@ class LoggerTest extends TestCase
         };
     }
 
-    #[Test]
-    public function logging_desabilitado_devolve_null_logger(): void
+    public function test_logging_desabilitado_devolve_null_logger(): void
     {
         $container = new Container;
         $container->instance('log', $this->logManager());
@@ -58,16 +56,14 @@ class LoggerTest extends TestCase
         $this->assertInstanceOf(NullLogger::class, $logger);
     }
 
-    #[Test]
-    public function container_sem_binding_de_log_devolve_null_logger(): void
+    public function test_container_sem_binding_de_log_devolve_null_logger(): void
     {
         $logger = Logger::resolve($this->config(['enabled' => true, 'channel' => 'erede']), new Container);
 
         $this->assertInstanceOf(NullLogger::class, $logger);
     }
 
-    #[Test]
-    public function usa_o_canal_configurado(): void
+    public function test_usa_o_canal_configurado(): void
     {
         $manager = $this->logManager(['erede']);
         $container = new Container;
@@ -80,8 +76,7 @@ class LoggerTest extends TestCase
         $this->assertCount(1, $manager->records);
     }
 
-    #[Test]
-    public function canal_inexistente_cai_para_o_logger_padrao_sem_estourar(): void
+    public function test_canal_inexistente_cai_para_o_logger_padrao_sem_estourar(): void
     {
         $manager = $this->logManager(canaisValidos: []);
         $container = new Container;
@@ -94,8 +89,7 @@ class LoggerTest extends TestCase
         $this->assertCount(1, $manager->records);
     }
 
-    #[Test]
-    public function canal_vazio_usa_o_logger_padrao(): void
+    public function test_canal_vazio_usa_o_logger_padrao(): void
     {
         $manager = $this->logManager();
         $container = new Container;
@@ -107,8 +101,7 @@ class LoggerTest extends TestCase
         $this->assertSame([], $manager->canaisPedidos);
     }
 
-    #[Test]
-    public function manager_sem_metodo_channel_e_usado_diretamente(): void
+    public function test_manager_sem_metodo_channel_e_usado_diretamente(): void
     {
         $simples = new class extends AbstractLogger
         {

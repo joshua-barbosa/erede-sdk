@@ -7,21 +7,12 @@ use eRede\Exceptions\ConfigurationException;
 use eRede\Exceptions\eRedeException;
 use eRede\Support\Config;
 use eRede\Support\HttpOptions;
+use eRede\Tests\Fixtures\BandeiraPura;
+use eRede\Tests\Fixtures\MoedaBacked;
 use eRede\Traits\ToArray;
-use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use stdClass;
-
-enum MoedaBacked: string
-{
-    case BRL = 'BRL';
-}
-
-enum BandeiraPura
-{
-    case VISA;
-}
 
 class FixtureComTipos
 {
@@ -38,24 +29,38 @@ class FixtureComTipos
 
 class ToArrayBranchesTest extends TestCase
 {
-    #[Test]
-    public function enum_backed_serializa_pelo_value(): void
+    /**
+     * `enum` é PHP 8.1 e o pacote suporta 8.0, então os enums vivem num arquivo
+     * à parte carregado só aqui. Ver docs/php-8.0-compat.md.
+     */
+    private function exigeEnums(): void
     {
+        if (PHP_VERSION_ID < 80100) {
+            $this->markTestSkipped('Enums exigem PHP 8.1+.');
+        }
+
+        require_once __DIR__.'/../Fixtures/Enums.php';
+    }
+
+    public function test_enum_backed_serializa_pelo_value(): void
+    {
+        $this->exigeEnums();
+
         $array = (new FixtureComTipos(backed: MoedaBacked::BRL))->toArray();
 
         $this->assertSame(['backed' => 'BRL'], $array);
     }
 
-    #[Test]
-    public function enum_puro_serializa_pelo_name(): void
+    public function test_enum_puro_serializa_pelo_name(): void
     {
+        $this->exigeEnums();
+
         $array = (new FixtureComTipos(puro: BandeiraPura::VISA))->toArray();
 
         $this->assertSame(['puro' => 'VISA'], $array);
     }
 
-    #[Test]
-    public function objeto_sem_to_array_e_convertido_por_suas_propriedades(): void
+    public function test_objeto_sem_to_array_e_convertido_por_suas_propriedades(): void
     {
         $obj = new stdClass;
         $obj->a = 1;
@@ -66,8 +71,7 @@ class ToArrayBranchesTest extends TestCase
         $this->assertSame(['objetoSimples' => ['a' => 1, 'b' => 'dois']], $array);
     }
 
-    #[Test]
-    public function array_de_objetos_com_to_array_desce_recursivamente(): void
+    public function test_array_de_objetos_com_to_array_desce_recursivamente(): void
     {
         $array = (new FixtureComTipos(lista: [
             new Link(method: 'GET', rel: 'self', href: 'https://api/x'),
@@ -80,8 +84,7 @@ class ToArrayBranchesTest extends TestCase
         ], $array);
     }
 
-    #[Test]
-    public function ignore_nullable_falso_preserva_nulos(): void
+    public function test_ignore_nullable_falso_preserva_nulos(): void
     {
         $array = (new FixtureComTipos(texto: 'x'))->toArray(ignoreNullable: false);
 
@@ -90,16 +93,14 @@ class ToArrayBranchesTest extends TestCase
         $this->assertSame('x', $array['texto']);
     }
 
-    #[Test]
-    public function chave_ja_minuscula_passa_intacta_no_snake_case(): void
+    public function test_chave_ja_minuscula_passa_intacta_no_snake_case(): void
     {
         $array = (new FixtureComTipos(texto: 'x'))->toArray(toSnakeCase: true);
 
         $this->assertSame(['texto' => 'x'], $array);
     }
 
-    #[Test]
-    public function excecao_sem_return_code_devolve_nulo(): void
+    public function test_excecao_sem_return_code_devolve_nulo(): void
     {
         $e = new eRedeException('falhou', 500);
 
@@ -107,8 +108,7 @@ class ToArrayBranchesTest extends TestCase
         $this->assertSame([], $e->context());
     }
 
-    #[Test]
-    public function excecao_expoe_return_code_e_causa_original(): void
+    public function test_excecao_expoe_return_code_e_causa_original(): void
     {
         $anterior = new RuntimeException('rede caiu');
         $e = new eRedeException('falhou', 400, $anterior, ['return_code' => 51]);
@@ -118,16 +118,14 @@ class ToArrayBranchesTest extends TestCase
         $this->assertSame(['return_code' => 51], $e->context());
     }
 
-    #[Test]
-    public function configuration_exception_e_uma_erede_exception(): void
+    public function test_configuration_exception_e_uma_erede_exception(): void
     {
         $this->assertInstanceOf(eRedeException::class, ConfigurationException::missingCredentials());
         $this->assertStringContainsString('EREDE_PV', ConfigurationException::missingCredentials()->getMessage());
         $this->assertStringContainsString('staging', ConfigurationException::invalidEnvironment('staging')->getMessage());
     }
 
-    #[Test]
-    public function bypass_de_proxy_aceita_array_alem_de_string(): void
+    public function test_bypass_de_proxy_aceita_array_alem_de_string(): void
     {
         $options = HttpOptions::fromConfig(new Config(pv: 'pv', token: 'token', http: [
             'proxy' => ['http' => 'http://p:8080', 'no' => ['localhost', ' ', '127.0.0.1']],
@@ -136,8 +134,7 @@ class ToArrayBranchesTest extends TestCase
         $this->assertSame(['localhost', '127.0.0.1'], $options['proxy']['no']);
     }
 
-    #[Test]
-    public function bypass_de_proxy_com_tipo_inesperado_e_ignorado(): void
+    public function test_bypass_de_proxy_com_tipo_inesperado_e_ignorado(): void
     {
         $options = HttpOptions::fromConfig(new Config(pv: 'pv', token: 'token', http: [
             'proxy' => ['http' => 'http://p:8080', 'no' => 123],

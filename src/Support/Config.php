@@ -5,10 +5,15 @@ namespace eRede\Support;
 use eRede\Exceptions\ConfigurationException;
 
 /**
- * Configuração imutável do SDK.
+ * Configuração do SDK.
  *
- * Toda alteração devolve uma nova instância — nenhum método muda o objeto
- * existente.
+ * Tratada como imutável: não há setters e `with()` devolve sempre uma nova
+ * instância — nenhum método altera o objeto existente.
+ *
+ * As 6 propriedades promovidas abaixo eram `readonly`; a palavra-chave saiu para
+ * suportar PHP 8.0, onde ela não existe. A imutabilidade virou convenção em vez
+ * de garantia do runtime: escrever direto em `$config->pv` funciona, e não deve
+ * ser feito. Ver docs/php-8.0-compat.md para restaurar.
  */
 final class Config
 {
@@ -43,12 +48,12 @@ final class Config
      * @param  array<string,mixed>  $logging
      */
     public function __construct(
-        public readonly ?string $pv = null,
-        public readonly ?string $token = null,
-        public readonly string $env = self::ENV_SANDBOX,
-        public readonly array $http = self::DEFAULTS['http'],
-        public readonly array $cache = self::DEFAULTS['cache'],
-        public readonly array $logging = self::DEFAULTS['logging'],
+        public ?string $pv = null,
+        public ?string $token = null,
+        public string $env = self::ENV_SANDBOX,
+        public array $http = self::DEFAULTS['http'],
+        public array $cache = self::DEFAULTS['cache'],
+        public array $logging = self::DEFAULTS['logging'],
     ) {}
 
     /**

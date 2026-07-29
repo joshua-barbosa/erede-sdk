@@ -13,6 +13,8 @@ use Illuminate\Contracts\Cache\Repository as CacheRepository;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Support\Facades\Facade;
+use Illuminate\Support\Facades\Http;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -45,9 +47,11 @@ class eRede
     /** Margem em segundos descontada da validade para não usar token prestes a expirar. */
     public const TOKEN_EXPIRATION_SKEW = 60;
 
-    private readonly Config $config;
+    // As duas propriedades abaixo eram `readonly`; a palavra-chave saiu para
+    // suportar PHP 8.0. Ver docs/php-8.0-compat.md para restaurar.
+    private Config $config;
 
-    private readonly ?Container $container;
+    private ?Container $container;
 
     private ?LoggerInterface $logger = null;
 
@@ -126,6 +130,18 @@ class eRede
     {
         if ($this->container?->bound(HttpFactory::class)) {
             return $this->container->make(HttpFactory::class);
+        }
+
+        // O Laravel 8 não registra Http\Client\Factory no container — quem
+        // guarda a instância viva é a própria facade. Resolver pelo container
+        // criaria uma nova, sem os stubs de Http::fake(), e as requisições dos
+        // testes de quem usa o pacote escapariam para a rede.
+        if (Facade::getFacadeApplication() !== null) {
+            $root = Http::getFacadeRoot();
+
+            if ($root instanceof HttpFactory) {
+                return $root;
+            }
         }
 
         return new HttpFactory;
