@@ -15,7 +15,7 @@ class Refunds
 {
     use RetrieveResponse;
 
-    public const BASE_URL = '/v1/transactions/__tid__/refunds';
+    public const BASE_URL = '/v2/transactions/__tid__/refunds';
 
     public function __construct(
         private PendingRequest $request,

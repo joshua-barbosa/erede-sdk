@@ -186,6 +186,6 @@ class TransactionsTest extends TestCase
 
         $this->app->make(eRede::class)->transactions('123')->refunds()->getByTid();
 
-        Http::assertSent(fn ($request) => str_contains($request->url(), '/v1/transactions/123/refunds'));
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/v2/transactions/123/refunds'));
     }
 }

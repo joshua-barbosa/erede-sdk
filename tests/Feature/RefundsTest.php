@@ -68,7 +68,7 @@ class RefundsTest extends TestCase
             tid: '999',
         );
 
-        Http::assertSent(fn ($request) => str_contains($request->url(), '/v1/transactions/999/refunds'));
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/v2/transactions/999/refunds'));
     }
 
     public function test_consulta_um_estorno_por_id(): void
@@ -78,7 +78,7 @@ class RefundsTest extends TestCase
         $refund = $this->erede()->transactions('123')->refunds()->get('r-1');
 
         $this->assertSame('CONFIRMED', $refund->getStatus());
-        Http::assertSent(fn ($request) => str_contains($request->url(), '/v1/transactions/123/refunds/r-1'));
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/v2/transactions/123/refunds/r-1'));
     }
 
     public function test_lista_estornos_por_tid_e_hidrata_o_refund_aninhado(): void
