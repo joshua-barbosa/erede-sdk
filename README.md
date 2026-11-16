@@ -39,11 +39,11 @@ Suporta **Laravel 8 a 13** / **PHP 8.0+**.
 > SDK para não ser surpreendido quando o suporte cair:
 >
 > ```bash
-> composer require joshua-barbosa/erede-sdk:~0.2.0
+> composer require joshua-barbosa/erede-sdk:~0.3.0
 > ```
 >
-> O `~0.2.0` aceita correções (`0.2.1`, `0.2.2`) mas não sobe para `0.3.0`, que é
-> onde a remoção pode acontecer.
+> O `~0.3.0` aceita correções (`0.3.1`, `0.3.2`) mas não sobe para `0.4.0`, que é
+> onde a remoção pode acontecer. A `0.3.0` ainda suporta as quatro versões.
 
 O piso de PHP 8.0 custou alguns recursos de 8.1+ (`readonly`, `enum` nos testes).
 O que foi cedido e como reverter está em [docs/php-8.0-compat.md](docs/php-8.0-compat.md).
@@ -57,7 +57,7 @@ composer require joshua-barbosa/erede-sdk
 O ServiceProvider é descoberto automaticamente — nada a registrar manualmente.
 
 > O pacote está em `0.x`: a API pública ainda pode mudar. O SemVer permite alterações
-> incompatíveis entre versões `0.x` diferentes, então fixe em `~0.2.0` se quiser
+> incompatíveis entre versões `0.x` diferentes, então fixe em `~0.3.0` se quiser
 > proteção contra quebras — sobretudo se você depende do suporte a Laravel 8–11.
 
 ### Desenvolvimento local
