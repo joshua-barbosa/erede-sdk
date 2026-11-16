@@ -8,6 +8,8 @@
 
 SDK PHP para a API [eRede](https://developer.userede.com.br/e-rede) (Rede) com autenticação OAuth 2.0, integrado ao Laravel.
 
+Cobre transações de **crédito**, **débito** e **Pix** (QR Code), captura, consulta e cancelamento/devolução.
+
 Suporta **Laravel 8 a 13** / **PHP 8.0+**.
 
 ## Compatibilidade
@@ -223,11 +225,64 @@ use eRede\Classes\Url;
 
 $erede->transactions($tid)->refunds()->create(
     new Amount(149.90),
-    new Url('https://minhaloja.com.br/webhooks/erede'),
+    new Url('https://minhaloja.com.br/webhooks/erede'),   // opcional
 );
 
-$erede->transactions($tid)->refunds()->getByTid();
+$erede->transactions($tid)->refunds()->getByTid()->getRefundsList();
+$erede->transactions($tid)->refunds()->get($refundId);
 ```
+
+A URL de callback é opcional: sem ela, vale a cadastrada no portal da Rede
+(*para vender > e-commerce > notificação automática*).
+
+### Pix
+
+> Disponível apenas para **correntistas Itaú**, com a chave Pix habilitada no portal da Rede
+> (*Para vender > PIX*).
+
+Solicitar o QR Code — mesmo endpoint das transações de cartão, com `kind = Pix`:
+
+```php
+use eRede\Classes\Transaction;
+
+$transaction = (new Transaction(amount: 39.00, reference: 'pedido-1234'))
+    ->pix(now()->addMinutes(30));          // expiração: futura e de no máximo 15 dias
+
+$response = $erede->transactions()->create($transaction);
+
+$response->getTid();                              // guarde para consultar e devolver
+$response->getQrCodeResponse()->getQrCodeData();  // Pix copia e cola (EMV)
+$response->getQrCodeResponse()->getQrCodeImage(); // imagem do QR Code em base64
+```
+
+`pix()` aceita `DateTimeInterface` (convertido para o horário de Brasília) ou uma string já no
+formato `YYYY-MM-DDThh:mm:ss`, enviada como veio.
+
+Consultar — o formato da resposta muda conforme o status:
+
+```php
+$consulta = $erede->transactions($tid)->get();
+
+if ($qr = $consulta->getQrCodeResponse()) {
+    $qr->isPending();                              // ainda não pago; QR Code segue disponível
+} else {
+    $consulta->getAuthorization()->getStatus();    // 'Approved' (pago) ou 'Canceled' (devolvido)
+    $consulta->getAuthorization()->getEndToEndId();
+    $consulta->getRefunds();                       // devoluções, se houver
+}
+```
+
+QR Code expirado lança `eRedeException` com `returnCode()` `'3036'`.
+
+Devolver (total ou parcial, em até 90 dias) — síncrono, só o valor:
+
+```php
+$erede->transactions($tid)->refunds()->create(new Amount(39.00));
+```
+
+O pagamento é avisado por **webhook** (`PV.UPDATE_TRANSACTION_PIX`) na URL cadastrada por CNPJ
+junto à central da Rede. O payload traz o TID em `data.id`; a Rede recomenda consultar a
+transação para confirmar. Detalhes em [docs/components.md](docs/components.md#pix).
 
 ## Referência da API
 
@@ -235,8 +290,8 @@ Documentação detalhada de cada tipo, separada por camada:
 
 | Documento | Conteúdo |
 |---|---|
-| [docs/classes.md](docs/classes.md) | `eRede\Classes` — objetos de entrada que você monta (`Transaction`, `Amount`, `Url`) e os blocos aninhados das respostas (`Authorization`, `Capture`, `Refund`, `Status`, `Link`), além da tabela `ReturnResponse` |
-| [docs/components.md](docs/components.md) | `eRede\Components` — `Transactions` e `Refunds`, os verbos do SDK: quais endpoints chamam, como resolvem o `tid` e o que retornam |
+| [docs/classes.md](docs/classes.md) | `eRede\Classes` — objetos de entrada que você monta (`Transaction`, `Amount`, `Url`, `QrCode`) e os blocos aninhados das respostas (`Authorization`, `Capture`, `Refund`, `Status`, `Link`, `QrCodeResponse`), além da tabela `ReturnResponse` |
+| [docs/components.md](docs/components.md) | `eRede\Components` — `Transactions` e `Refunds`, os verbos do SDK: quais endpoints chamam, como resolvem o `tid` e o que retornam; fluxo Pix e webhook |
 | [docs/responses.md](docs/responses.md) | `eRede\Responses` — `Transaction`, `TransactionGet`, `Refund` e `RefundGet`: como a hidratação via `fromData` funciona e o que cada campo significa |
 | [docs/traits.md](docs/traits.md) | `eRede\Traits` — `ToArray` (serialização e a regra do `ignoreNullable`), `Attribute` (acesso por nome) e `RetrieveResponse` (resposta HTTP → payload ou exceção) |
 
@@ -273,7 +328,7 @@ composer test
 > PHP 8.0, remova-o antes: `composer remove --dev laravel/pint --no-update`. É o que
 > a linha de PHP 8.0 do CI faz.
 
-99 testes, 364 asserções. Cobertura: **94,94% de linhas / 92,46% de métodos** (medida com PCOV em PHP 8.3).
+125 testes, 469 asserções. Cobertura: **95,65% de linhas / 93,94% de métodos** (medida com PCOV em PHP 8.3).
 
 A suíte usa `Http::fake()` — nenhuma requisição sai para a Rede.
 
@@ -295,6 +350,8 @@ Http::fake([
 ## Corrigido na extração
 
 - **`Responses\RefundGet::getRefunds()` lançava `TypeError` sempre.** A propriedade é `?Refund`, mas getter, setter e construtor declaravam `?string`. Como a hidratação via `fromData` atribui um `Refund`, qualquer chamada a `getRefunds()` após `refunds()->getByTid()` estourava — o fluxo de consulta de estornos estava quebrado de ponta a ponta. Os três tipos passaram a ser `?Refund`.
+
+- **`Transaction::capture(false)` não era enviado.** O `ToArray` descartava tudo que `empty()` considera vazio, inclusive `false` e `0`; o campo `capture` sumia do payload e a Rede aplicava a captura automática. Agora só `null`, `''` e `[]` são omitidos — `capture: false`, `subscription: false` e `amount: 0` chegam à Rede.
 
 ## Pendências conhecidas
 

@@ -4,14 +4,16 @@ Objetos de **entrada**: você os monta e passa para os componentes. Todos usam o
 [`ToArray`](traits.md#toarray) e [`Attribute`](traits.md#attribute), então todos expõem
 `toArray()`, `set()`, `setMany()`, `get()` e `getMany()` além do que está listado aqui.
 
-Os que aparecem aninhados em respostas (`Authorization`, `Capture`, `Link`, `Status`, `Refund`)
-aceitam `fromData` no construtor — é por ele que o SDK hidrata o JSON da Rede.
+Os que aparecem aninhados em respostas (`Authorization`, `Capture`, `Link`, `Status`, `Refund`,
+`QrCodeResponse`) aceitam `fromData` no construtor — é por ele que o SDK hidrata o JSON da Rede.
 
 | Classe | Papel |
 |---|---|
 | [`Amount`](#amount) | Valor monetário com conversão para centavos |
 | [`Transaction`](#transaction) | Payload de criação de transação |
 | [`Url`](#url) | URL de callback / 3DS |
+| [`QrCode`](#qrcode) | Expiração do QR Code de uma solicitação Pix |
+| [`QrCodeResponse`](#qrcoderesponse) | Bloco `qrCodeResponse` das respostas Pix |
 | [`Authorization`](#authorization) | Bloco de autorização de uma consulta |
 | [`Capture`](#capture) | Bloco de captura de uma consulta |
 | [`Refund`](#refund) | Estorno aninhado em `RefundGet` |
@@ -52,6 +54,7 @@ $amount->getConvertedAmount();  // 14990
 |---|---|
 | `CREDIT` | `'credit'` |
 | `DEBIT` | `'debit'` |
+| `PIX` | `'Pix'` |
 | `ORIGIN_EREDE` | `1` |
 | `ORIGIN_VISA_CHECKOUT` | `4` |
 | `ORIGIN_MASTERPASS` | `6` |
@@ -76,6 +79,27 @@ public function setCard(string $cardNumber, string $securityCode, string|int $ex
 `creditCard()` define `kind = CREDIT`. `debitCard()` define `kind = DEBIT` **e força `capture(true)`** —
 transações de débito são sempre capturadas.
 
+### Pix
+
+```php
+public function pix(DateTimeInterface|string $dateTimeExpiration): self
+```
+
+Define `kind = PIX` e o grupo [`qrCode`](#qrcode) com a expiração — nenhum dado de cartão é
+necessário. A expiração precisa ser futura e de no máximo 15 dias. Um `DateTimeInterface` é
+convertido para o horário de Brasília e formatado como `YYYY-MM-DDThh:mm:ss`; uma string é
+enviada como veio.
+
+Lança `InvalidArgumentException` se a transação já foi marcada com `capture(false)` (Pix não
+tem captura posterior) ou se já recebeu dados de cartão. O campo `capture` nunca é enviado em
+Pix: `capture(true)` antes ou depois de `pix()` é ignorado.
+
+```php
+$transaction = (new Transaction(amount: 39.00, reference: 'pedido-1234'))
+    ->pix(now()->addMinutes(30))
+    ->setOrderId('ordem1234');
+```
+
 ### Captura
 
 ```php
@@ -83,13 +107,14 @@ public function capture(bool $capture = true): self
 ```
 
 `capture(false)` autoriza sem capturar (captura posterior via [`Transactions::capture()`](components.md#capture)).
-Lança `InvalidArgumentException` se chamado com `false` quando `kind` já é `DEBIT`.
+Lança `InvalidArgumentException` se chamado com `false` quando `kind` já é `DEBIT` ou `PIX`.
 
 ### Acessores
 
 ```php
 public function getKind(): ?string                   public function setKind(string $kind): self
 public function getReference(): ?string              public function setReference(string $reference): self
+public function getOrderId(): ?string                public function setOrderId(string $orderId): self
 public function getAmount(): ?int                    public function setAmount(float $amount): self
 public function getInstallments(): ?int              public function setInstallments(int $installments): self
 public function getCardHolderName(): ?string         public function setCardHolderName(string $cardHolderName): self
@@ -102,7 +127,11 @@ public function getSubscription(): ?bool             public function setSubscrip
 public function getOrigin(): ?int                    public function setOrigin(int $origin): self
 public function getDistributorAffiliation(): ?int    public function setDistributorAffiliation(int $distributorAffiliation): self
 public function getBrandTid(): ?string               public function setBrandTid(string $brandTid): self
+public function getQrCode(): ?QrCode                 public function setQrCode(QrCode $qrCode): self
 ```
+
+`orderId` é o código do pedido (até 50 caracteres, sem caracteres especiais), independente do
+`reference`.
 
 > **Atenção à assimetria:** `setAmount()` recebe **reais** e `getAmount()` devolve **centavos**.
 > `setAmount(10.50)` seguido de `getAmount()` retorna `1050`.
@@ -112,6 +141,7 @@ public function getBrandTid(): ?string               public function setBrandTid
 ```php
 public function isCredit(): bool
 public function isDebit(): bool
+public function isPix(): bool
 public function isVisaCheckout(): bool
 public function isMasterpass(): bool
 public function isErede(): bool
@@ -154,6 +184,70 @@ new Url('https://minhaloja.com.br/3ds/ok', Url::THREE_D_SECURE_SUCCESS);
 
 ---
 
+## QrCode
+
+`eRede\Classes\QrCode` — grupo `qrCode` da solicitação Pix. Normalmente você não o instancia:
+[`Transaction::pix()`](#pix) faz isso.
+
+| Constante | Valor |
+|---|---|
+| `DATE_FORMAT` | `'Y-m-d\TH:i:s'` |
+| `TIMEZONE` | `'America/Sao_Paulo'` |
+
+```php
+public function __construct(DateTimeInterface|string $dateTimeExpiration)
+
+getDateTimeExpiration(): ?string
+setDateTimeExpiration(DateTimeInterface|string $dateTimeExpiration): self
+```
+
+O formato da Rede não carrega offset, então objetos de data são convertidos para `TIMEZONE`
+antes de formatar. Strings passam intactas (apenas `trim`); string vazia lança
+`InvalidArgumentException`.
+
+---
+
+## QrCodeResponse
+
+`eRede\Classes\QrCodeResponse` — bloco `qrCodeResponse` das respostas Pix. Hidratado via
+`fromData`; só tem getters.
+
+Aparece em dois lugares, com campos diferentes:
+
+| Campo | Solicitação (`create()`) | Consulta de QR Code pendente (`get()`) |
+|---|---|---|
+| `qrCodeData` — código EMV, o "copia e cola" | ✅ | ✅ |
+| `qrCodeImage` — imagem do QR Code em base64 | ✅ | ✅ |
+| `dateTimeExpiration` — expiração | ✅ | — |
+| `expirationQrCode` — expiração | — | ✅ |
+| `dateTime`, `returnCode`, `returnMessage` | — | ✅ |
+| `affiliation`, `kind`, `reference`, `amount`, `tid` | — | ✅ |
+| `status` — `Pending`, `Approved` ou `Canceled` | — | ✅ |
+
+```php
+getQrCodeData(): ?string           getQrCodeImage(): ?string
+getDateTimeExpiration(): ?string   getExpirationQrCode(): ?string
+getDateTime(): ?string             getStatus(): ?string
+getReturnCode(): ?string           getReturnMessage(): ?string
+getAffiliation(): ?int             getKind(): ?string
+getReference(): ?string            getAmount(): ?int
+getTid(): ?string
+
+isPending(): bool    isApproved(): bool    isCanceled(): bool
+```
+
+Constantes: `STATUS_PENDING`, `STATUS_APPROVED`, `STATUS_CANCELED`.
+
+> `qrCodeData` e `qrCodeImage` só voltam enquanto o QR Code está pendente. Depois de pago ou
+> devolvido a consulta nem traz este bloco — os dados passam para
+> [`Authorization`](#authorization).
+
+```php
+<img src="data:image/png;base64,{{ $response->getQrCodeResponse()->getQrCodeImage() }}">
+```
+
+---
+
 ## Authorization
 
 `eRede\Classes\Authorization` — bloco `authorization` de
@@ -173,13 +267,16 @@ Os campos mais usados na prática:
 | `amount` | Valor em **centavos** |
 | `installments` | Número de parcelas |
 | `cardBin` / `last4` | 6 primeiros e 4 últimos dígitos do cartão |
-| `kind` | `'credit'` ou `'debit'` |
+| `kind` | `'credit'`, `'debit'` ou `'Pix'` |
 | `authorizationCode` | Código de autorização do emissor |
 | `nsu` | Número sequencial único do comprovante |
 | `affiliation` | Código de afiliação (PV) usado na transação |
 | `origin` | Origem da transação (ver constantes em [`Transaction`](#transaction)) |
 | `softDescriptor` | Texto exibido na fatura do portador |
 | `subscription` | Se é transação recorrente — leia com `isSubscription()` |
+| `orderId` | Código do pedido informado na criação |
+| `txid` | Identificador do Pix gerado pelo Itaú — só em Pix pago ou devolvido |
+| `endToEndId` | Identificador do pagamento do Pix |
 
 ```php
 public function __construct(
@@ -214,7 +311,13 @@ getLast4(): ?string               setLast4(?string): self
 getSoftDescriptor(): ?string      setSoftDescriptor(?string): self
 getOrigin(): ?int                 setOrigin(?int): self
 isSubscription(): ?bool           setSubscription(?bool): self
+getOrderId(): ?string
+getTxid(): ?string
+getEndToEndId(): ?string
 ```
+
+`orderId`, `txid` e `endToEndId` não têm setter nem entram no construtor: chegam só pela
+hidratação.
 
 > O predicado é `isSubscription()`, não `getSubscription()` — divergência em relação a
 > [`Transaction`](#transaction), que usa `getSubscription()`. `amount` aqui já vem em **centavos**.
@@ -276,7 +379,8 @@ if ($capture = $consulta->getCapture()) {
 
 ## Refund
 
-`eRede\Classes\Refund` — estorno aninhado em [`Responses\RefundGet`](responses.md#refundget).
+`eRede\Classes\Refund` — estorno aninhado em [`Responses\RefundGet`](responses.md#refundget) e
+na lista `refunds` de [`Responses\TransactionGet`](responses.md#transactionget).
 
 > **Não confundir com [`Responses\Refund`](responses.md#refund).** São classes distintas com o
 > mesmo nome curto: esta é o bloco resumido que aparece dentro da *listagem* de estornos; a
@@ -288,7 +392,7 @@ if ($capture = $consulta->getCapture()) {
 | `refundId` | ID do estorno na Rede |
 | `refundDateTime` | Quando o estorno foi processado |
 | `cancelId` | ID de cancelamento, quando a Rede o fornece |
-| `status` | `PENDING`, `CONFIRMED`, `FAILED`… |
+| `status` | `Done`, `Denied` ou `Processing` |
 | `amount` | Valor estornado em **centavos** |
 
 ```php

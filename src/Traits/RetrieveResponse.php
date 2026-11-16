@@ -67,8 +67,9 @@ trait RetrieveResponse
     }
 
     /**
-     * O código de retorno vem na raiz nas respostas de criação e dentro de
-     * `authorization` nas de consulta.
+     * O código de retorno vem na raiz nas respostas de criação, dentro de
+     * `authorization` nas de consulta e dentro de `qrCodeResponse` na consulta
+     * de QR Code Pix.
      *
      * @param  array<string,mixed>  $json
      */
@@ -76,6 +77,7 @@ trait RetrieveResponse
     {
         $code = $json['returnCode']
             ?? $json['authorization']['returnCode']
+            ?? $json['qrCodeResponse']['returnCode']
             ?? null;
 
         return $code === null ? null : (string) $code;
