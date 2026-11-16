@@ -17,6 +17,7 @@ use eRede\Traits\ToArray;
  * @property string|null $cancelId
  * @property int|null $amount
  * @property string|null $status
+ * @property string|null $txid
  * @property array<int,Status>|null $statusHistory
  * @property array<int,Link>|null $links
  */
@@ -41,6 +42,9 @@ class Refund
     private ?int $amount = null;
 
     private ?string $status = null;
+
+    /** Identificador do Pix gerado pelo Itaú; só em devoluções Pix. */
+    private ?string $txid = null;
 
     private ?array $statusHistory = null;
 
@@ -91,6 +95,11 @@ class Refund
                 }
             }
         }
+    }
+
+    public function getTxid(): ?string
+    {
+        return $this->txid;
     }
 
     public function getReturnCode(): ?string

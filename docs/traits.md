@@ -27,11 +27,12 @@ public function toArray(bool $ignoreNullable = true, bool $toSnakeCase = false):
 
 ### `$ignoreNullable` — o parâmetro que mais importa
 
-Com `true` (padrão), campos "vazios" são **removidos** do array. É o comportamento correto para
+Com `true` (padrão), campos sem valor são **removidos** do array. É o comportamento correto para
 a Rede: enviar `"installments": null` provoca erro de validação; simplesmente omitir o campo não.
 
-O critério de descarte é `is_null($v) === false && empty($v) === false`, ou seja, tudo que
-`empty()` considera vazio é cortado — **inclusive `0`, `'0'`, `false` e `[]`**.
+São descartados apenas `null`, string vazia (`''`) e array vazio (`[]`). **`false` e `0` são
+preservados**, porque são valores com significado para a Rede: `capture: false` pede captura
+posterior, `subscription: false` e `amount: 0` (zero dollar) também são válidos.
 
 ```php
 $t = new Transaction(amount: 149.90, reference: 'pedido-1');
@@ -40,9 +41,10 @@ $t->toArray();
 // nada de cardNumber, kind, installments… — todos null
 ```
 
-> **Cuidado:** um campo legitimamente `0` ou `false` desaparece do payload. Na prática isso não
-> afeta os campos que a Rede usa (`installments` mínimo é 1, `capture` só é enviado quando
-> `true`), mas é a regra a ter em mente ao adicionar campos novos.
+> **Mudou nesta versão:** antes o critério era `empty()`, que também cortava `0` e `false`. Com
+> isso `Transaction::capture(false)` nunca chegava à Rede e a transação era capturada
+> automaticamente. Se você serializa DTOs com `toArray()` por conta própria, campos `0` e
+> `false` agora aparecem no resultado.
 
 Com `false`, tudo é preservado, inclusive nulos — útil para depuração e testes:
 
@@ -210,10 +212,11 @@ private function returnCode(array $json): ?string
 ```
 
 Extrai o código de retorno de onde quer que ele esteja. A Rede o coloca na raiz nas respostas de
-criação e dentro de `authorization` nas de consulta:
+criação, dentro de `authorization` nas de consulta e dentro de `qrCodeResponse` na consulta
+de QR Code Pix pendente:
 
 ```php
-$json['returnCode'] ?? $json['authorization']['returnCode'] ?? null
+$json['returnCode'] ?? $json['authorization']['returnCode'] ?? $json['qrCodeResponse']['returnCode'] ?? null
 ```
 
 Sempre devolve string ou `null`, normalizando o tipo.

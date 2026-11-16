@@ -30,8 +30,8 @@ Todo `amount` em resposta vem em **centavos** (`1050` = R$ 10,50), diferente de
 
 | Response | Origem | Formato |
 |---|---|---|
-| [`Transaction`](#transaction) | `create()`, `capture()` | Campos na raiz |
-| [`TransactionGet`](#transactionget) | `get()`, `getByReference()` | Aninhado em `authorization` / `capture` |
+| [`Transaction`](#transaction) | `create()`, `capture()` | Campos na raiz (+ `qrCodeResponse` em Pix) |
+| [`TransactionGet`](#transactionget) | `get()`, `getByReference()` | Aninhado em `authorization` / `capture`, ou em `qrCodeResponse` para Pix pendente |
 | [`Refund`](#refund) | `refunds()->create()`, `refunds()->get()` | Campos na raiz + histórico |
 | [`RefundGet`](#refundget) | `refunds()->getByTid()` | Aninhado em `refunds` |
 
@@ -66,6 +66,7 @@ public ?string $authorizationCode;  public ?string $dateTime;
 public ?int    $amount;             public ?string $cardBin;
 public ?string $last4;              public ?string $returnCode;
 public ?string $returnMessage;      public ?array  $links;
+public ?string $orderId;            public ?Classes\QrCodeResponse $qrCodeResponse;
 ```
 
 ### O que cada campo significa
@@ -83,6 +84,8 @@ public ?string $returnMessage;      public ?array  $links;
 | `last4` | 4 últimos dígitos |
 | `returnCode` | Código de retorno (`'00'` = aprovada) |
 | `returnMessage` | Mensagem crua da Rede (em inglês) |
+| `orderId` | Código do pedido, quando enviado na criação |
+| `qrCodeResponse` | [`Classes\QrCodeResponse`](classes.md#qrcoderesponse) — só em solicitações Pix; `null` nas demais |
 | `links` | Array de [`Classes\Link`](classes.md#link) |
 
 ### Construtor
@@ -112,8 +115,24 @@ getLast4(): ?string              setLast4(?string): self
 getReturnCode(): ?string         setReturnCode(?string): self
 getReturnMessage(): ?string      setReturnMessage(?string): self
 getLinks(): ?array               setLinks(?array): self
+getOrderId(): ?string            setOrderId(?string): self
+getQrCodeResponse(): ?Classes\QrCodeResponse
+setQrCodeResponse(?Classes\QrCodeResponse): self
 
 addLink(Classes\Link $link): self   // inicializa o array se ainda for null
+```
+
+`orderId` e `qrCodeResponse` não entram no construtor posicional — chegam por `fromData` ou
+pelos setters.
+
+Em Pix não há cartão: `nsu`, `authorizationCode`, `cardBin` e `last4` ficam `null`, e o que
+interessa está em `getTid()` e `getQrCodeResponse()`.
+
+```php
+$response = $erede->transactions()->create($transaction->pix(now()->addMinutes(30)));
+
+$response->getQrCodeResponse()->getQrCodeData();   // copia e cola
+$response->getQrCodeResponse()->getQrCodeImage();  // base64
 ```
 
 ### Exemplo
@@ -147,13 +166,23 @@ cobrança?"*.
 ### Propriedades
 
 ```php
-public ?Classes\Authorization $authorization;
-public ?Classes\Capture       $capture;
-public ?array                 $links;
+public ?Classes\Authorization  $authorization;
+public ?Classes\Capture        $capture;
+public ?array                  $links;
+public ?string                 $requestDateTime;
+public ?Classes\QrCodeResponse $qrCodeResponse;
+public ?array                  $refunds;         // array<int, Classes\Refund>
 ```
 
 `capture` é `null` quando a transação foi apenas autorizada (criada com
 `Transaction::capture(false)`) e ainda não capturada — é assim que você distingue os dois estados.
+
+**Pix muda o formato.** Enquanto o QR Code está pendente a Rede não manda `authorization`: os
+dados vêm em `qrCodeResponse` ([`Classes\QrCodeResponse`](classes.md#qrcoderesponse)). Depois de
+pago ou devolvido, some o `qrCodeResponse` e aparecem `authorization`, `capture` e, havendo
+devoluções, `refunds` — uma lista de [`Classes\Refund`](classes.md#refund).
+
+`requestDateTime`, `qrCodeResponse` e `refunds` não entram no construtor posicional.
 
 ### Construtor
 
@@ -172,6 +201,9 @@ public function __construct(
 getAuthorization(): ?Classes\Authorization    setAuthorization(?Classes\Authorization): void
 getCapture(): ?Classes\Capture                setCapture(?Classes\Capture): void
 getLinks(): ?array                            setLinks(?array): void
+getRequestDateTime(): ?string                 setRequestDateTime(?string): void
+getQrCodeResponse(): ?Classes\QrCodeResponse  setQrCodeResponse(?Classes\QrCodeResponse): void
+getRefunds(): ?array                          setRefunds(?array): void
 addLink(Classes\Link $link): void
 ```
 
@@ -195,15 +227,36 @@ if ($consulta->getCapture() === null) {
 }
 ```
 
+Para Pix:
+
+```php
+$consulta = $erede->transactions($tid)->get();
+
+if ($qr = $consulta->getQrCodeResponse()) {
+    // pendente: o QR Code ainda pode ser exibido
+    $qr->getQrCodeData();
+} else {
+    $auth = $consulta->getAuthorization();
+    $auth->getStatus();       // 'Approved' = pago, 'Canceled' = devolvido por inteiro
+    $auth->getEndToEndId();
+
+    foreach ($consulta->getRefunds() ?? [] as $devolucao) {
+        $devolucao->getAmount();
+    }
+}
+```
+
 ---
 
 ## Refund
 
 `eRede\Responses\Refund` — resposta de **criação** e de **consulta individual** de estorno.
 
-Estorno na Rede é assíncrono: o `create()` costuma devolver `status` `PENDING`, e a confirmação
-chega depois (via callback ou nova consulta). Por isso esta classe tem `statusHistory` — a
-trilha de transições pela qual o estorno passou.
+Estorno pedido depois do dia da transação é processado em D+1: o `create()` devolve
+`returnCode` `360` (solicitação aceita) e a confirmação chega depois, via callback ou nova
+consulta. Por isso esta classe tem `statusHistory` — a trilha de transições pela qual o estorno
+passou. Devolução **Pix** é síncrona e a resposta traz apenas `refundDateTime`, `returnCode` e
+`returnMessage`.
 
 ### Propriedades
 
@@ -213,15 +266,16 @@ private ?string $refundId;        private ?string $tid;
 private ?string $nsu;             private ?string $refundDateTime;
 private ?string $cancelId;        private ?int    $amount;
 private ?string $status;          private ?array  $statusHistory;
-private ?array  $links;
+private ?array  $links;           private ?string $txid;
 ```
 
 | Campo | Significado |
 |---|---|
+| `txid` | Identificador do Pix gerado pelo Itaú — só em devoluções Pix; apenas getter |
 | `refundId` | ID do estorno — use para consultar depois com `refunds()->get($refundId)` |
 | `tid` | TID da transação estornada |
 | `cancelId` | ID de cancelamento, quando a Rede o fornece |
-| `status` | Estado atual (`PENDING`, `CONFIRMED`, `FAILED`…) |
+| `status` | Estado atual: `Done`, `Denied` ou `Processing` |
 | `statusHistory` | Array de [`Classes\Status`](classes.md#status), a trilha de transições |
 | `amount` | Valor estornado em **centavos** |
 | `links` | Array de [`Classes\Link`](classes.md#link) |
@@ -251,6 +305,7 @@ getAmount(): ?int               setAmount(?int): self
 getStatus(): ?string            setStatus(?string): self
 getStatusHistory(): ?array      setStatusHistory(?array): self
 getLinks(): ?array              setLinks(?array): self
+getTxid(): ?string
 
 addStatus(Classes\Status $status): self
 addLink(Classes\Link $link): self
@@ -261,11 +316,11 @@ addLink(Classes\Link $link): self
 ```php
 $estorno = $erede->transactions($tid)->refunds()->create(
     new Amount(149.90),
-    new Url('https://minhaloja.com.br/webhooks/erede'),
+    new Url('https://minhaloja.com.br/webhooks/erede'),  // opcional
 );
 
-$estorno->getRefundId();  // guarde para acompanhar
-$estorno->getStatus();    // normalmente 'PENDING'
+$estorno->getRefundId();    // guarde para acompanhar
+$estorno->getReturnCode();  // '360' = solicitação aceita
 
 foreach ($estorno->getStatusHistory() ?? [] as $passo) {
     echo $passo->getStatus().' em '.$passo->getDateTime();
@@ -279,14 +334,15 @@ foreach ($estorno->getStatusHistory() ?? [] as $passo) {
 `eRede\Responses\RefundGet` — resposta da **listagem** de estornos de uma transação
 (`refunds()->getByTid()`).
 
-O nome sugere uma coleção, mas o campo `refunds` é hidratado como **um único**
-[`Classes\Refund`](classes.md#refund) — não um array. É o formato que a Rede devolve neste
-endpoint; se precisar de todos os estornos de uma transação, percorra os `links`.
+A Rede devolve `refunds` como **lista**. Use `getRefundsList()` para percorrer todos os
+estornos. `getRefunds()` existe por compatibilidade com versões anteriores do SDK, que tratavam
+a chave como um único objeto: ele devolve apenas o **primeiro** item.
 
 ### Propriedades
 
 ```php
-private ?Classes\Refund $refunds;
+private ?Classes\Refund $refunds;       // primeiro estorno
+private array           $refundsList;   // array<int, Classes\Refund> — todos
 private ?array          $links;
 ```
 
@@ -303,6 +359,7 @@ public function __construct(
 ### Métodos
 
 ```php
+getRefundsList(): array          // array<int, Classes\Refund>
 getRefunds(): ?Classes\Refund    setRefunds(?Classes\Refund): self
 getLinks(): ?array               setLinks(?array): self
 addLink(Classes\Link $link): self
@@ -310,18 +367,22 @@ addLink(Classes\Link $link): self
 
 ### Comportamento na hidratação
 
-- `refunds` vindo como array → vira um `Classes\Refund` populado.
-- `refunds` vindo como qualquer outra coisa → vira um `Classes\Refund` **vazio**, não `null`.
-  Então `getRefunds()` raramente retorna `null` quando a chave existe; cheque os campos internos.
+- `refunds` vindo como lista → cada item vira um `Classes\Refund` em `refundsList`, e
+  `refunds` aponta para o primeiro.
+- `refunds` vindo como objeto único → `refundsList` fica com um item.
+- `refunds` vazio ou de outro tipo → `refundsList` fica `[]` e `refunds` vira um
+  `Classes\Refund` **vazio**, não `null`. Então `getRefunds()` raramente retorna `null` quando a
+  chave existe; prefira `getRefundsList()`.
+- `setRefunds()` altera só o primeiro estorno; não mexe em `refundsList`.
 
 ### Exemplo
 
 ```php
 $lista = $erede->transactions($tid)->refunds()->getByTid();
 
-if ($refund = $lista->getRefunds()) {
+foreach ($lista->getRefundsList() as $refund) {
     $refund->getRefundId();
-    $refund->getStatus();
+    $refund->getStatus();  // 'Done', 'Denied' ou 'Processing'
     $refund->getAmount();  // centavos
 }
 ```

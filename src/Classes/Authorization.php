@@ -45,6 +45,14 @@ class Authorization
 
     private ?bool $subscription = false;
 
+    private ?string $orderId = null;
+
+    /** Identificador do Pix gerado pelo Itaú; só em Pix pago ou devolvido. */
+    private ?string $txid = null;
+
+    /** Identificador do pagamento do Pix. */
+    private ?string $endToEndId = null;
+
     public function __construct(
         ?string $dateTime = null,
         ?string $returnCode = null,
@@ -90,6 +98,21 @@ class Authorization
                 $this->set(key: $key, value: $value);
             }
         }
+    }
+
+    public function getOrderId(): ?string
+    {
+        return $this->orderId;
+    }
+
+    public function getTxid(): ?string
+    {
+        return $this->txid;
+    }
+
+    public function getEndToEndId(): ?string
+    {
+        return $this->endToEndId;
     }
 
     public function getDateTime(): ?string

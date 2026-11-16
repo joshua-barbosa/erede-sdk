@@ -2,6 +2,7 @@
 
 namespace eRede\Classes;
 
+use DateTimeInterface;
 use eRede\Traits\Attribute;
 use eRede\Traits\ToArray;
 use InvalidArgumentException;
@@ -14,6 +15,9 @@ class Transaction
 
     public const DEBIT = 'debit';
 
+    /** A Rede documenta o valor com inicial maiúscula. */
+    public const PIX = 'Pix';
+
     public const ORIGIN_EREDE = 1;
 
     public const ORIGIN_VISA_CHECKOUT = 4;
@@ -25,6 +29,8 @@ class Transaction
     private ?string $kind = null;
 
     private ?string $reference = null;
+
+    private ?string $orderId = null;
 
     private ?int $amount = null;
 
@@ -50,6 +56,8 @@ class Transaction
 
     private ?string $brandTid = null;
 
+    private ?QrCode $qrCode = null;
+
     public function __construct(?float $amount = null, ?string $reference = null)
     {
         $this->amount = intval(value: ceil(num: $amount * 100));
@@ -60,6 +68,15 @@ class Transaction
     {
         if (! $capture && $this->kind === Transaction::DEBIT) {
             throw new InvalidArgumentException('Debit transactions will always be captured');
+        }
+
+        if (! $capture && $this->kind === Transaction::PIX) {
+            throw new InvalidArgumentException('Pix transactions do not support later capture');
+        }
+
+        // Pix não tem o campo `capture`: o pagamento do QR Code já é a liquidação.
+        if ($this->kind === Transaction::PIX) {
+            return $this;
         }
 
         $this->capture = $capture;
@@ -87,6 +104,19 @@ class Transaction
     public function setReference(string $reference): self
     {
         $this->reference = $reference;
+
+        return $this;
+    }
+
+    public function getOrderId(): ?string
+    {
+        return $this->orderId;
+    }
+
+    /** Código do pedido; a Rede não aceita caracteres especiais. */
+    public function setOrderId(string $orderId): self
+    {
+        $this->orderId = $orderId;
 
         return $this;
     }
@@ -235,6 +265,23 @@ class Transaction
         return $this;
     }
 
+    public function getQrCode(): ?QrCode
+    {
+        return $this->qrCode;
+    }
+
+    public function setQrCode(QrCode $qrCode): self
+    {
+        $this->qrCode = $qrCode;
+
+        return $this;
+    }
+
+    public function isPix(): bool
+    {
+        return $this->kind === self::PIX;
+    }
+
     public function isCredit(): bool
     {
         return $this->kind === self::CREDIT;
@@ -301,5 +348,30 @@ class Transaction
             $holderName,
             Transaction::DEBIT
         );
+    }
+
+    /**
+     * Transforma a transação em uma solicitação de QR Code Pix.
+     *
+     * A expiração deve ser futura e de no máximo 15 dias. Objetos de data são
+     * convertidos para o horário de Brasília; strings vão como vieram
+     * (formato esperado: YYYY-MM-DDThh:mm:ss).
+     *
+     * @throws InvalidArgumentException
+     */
+    public function pix(DateTimeInterface|string $dateTimeExpiration): self
+    {
+        if ($this->capture === false) {
+            throw new InvalidArgumentException('Pix transactions do not support later capture');
+        }
+
+        if ($this->cardNumber !== null) {
+            throw new InvalidArgumentException('Pix transactions do not accept card data');
+        }
+
+        $this->capture = null;
+        $this->setKind(kind: Transaction::PIX);
+
+        return $this->setQrCode(new QrCode($dateTimeExpiration));
     }
 }

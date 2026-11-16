@@ -6,6 +6,7 @@ use eRede\Classes\Amount;
 use eRede\Classes\Authorization;
 use eRede\Classes\Capture;
 use eRede\Classes\Link;
+use eRede\Classes\QrCode;
 use eRede\Classes\Refund as ClassesRefund;
 use eRede\Classes\Status;
 use eRede\Classes\Transaction;
@@ -145,6 +146,8 @@ class AccessorsTest extends TestCase
             'float' => 1.5,
             'bool' => true,
             'array' => ['chave' => 'valor'],
+            // Único value object com argumento obrigatório no construtor.
+            QrCode::class => new QrCode('2030-01-15T23:59:00'),
             default => new $nome,
         };
     }

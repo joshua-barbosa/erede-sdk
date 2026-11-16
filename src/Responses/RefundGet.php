@@ -9,13 +9,20 @@ use eRede\Traits\ToArray;
 
 /**
  * @property Refund|null $refunds
+ * @property array<int,Refund> $refundsList
  * @property array<int,Link>|null $links
  */
 class RefundGet
 {
-    use Attribute, ToArray;
+    use Attribute;
+    use ToArray {
+        toArray as private traitToArray;
+    }
 
     private ?Refund $refunds = null;
+
+    /** @var array<int,Refund> */
+    private array $refundsList = [];
 
     private ?array $links = null;
 
@@ -36,16 +43,56 @@ class RefundGet
                         }
                     }
                 } elseif ($key === 'refunds') {
-                    if (is_array($value)) {
-                        $this->refunds = new Refund(fromData: $value);
-                    } else {
-                        $this->refunds = new Refund(fromData: []);
-                    }
+                    $this->hydrateRefunds($value);
                 } else {
                     $this->set(key: $key, value: $value);
                 }
             }
         }
+    }
+
+    /**
+     * A Rede devolve `refunds` como lista; versões anteriores do SDK tratavam
+     * a chave como um único objeto. `refunds` continua apontando para o
+     * primeiro item e `refundsList` guarda todos.
+     */
+    private function hydrateRefunds(mixed $value): void
+    {
+        $value = is_array($value) ? $value : [];
+        $isList = $value === [] || array_keys($value) === range(0, count($value) - 1);
+        $items = $isList ? $value : [$value];
+
+        $this->refundsList = array_map(
+            static fn ($refundData) => new Refund(fromData: is_array($refundData) ? $refundData : []),
+            $items,
+        );
+
+        $this->refunds = $this->refundsList[0] ?? new Refund(fromData: []);
+    }
+
+    /**
+     * `refundsList` é só uma visão interna de `refunds`; fica fora da
+     * serialização para o array continuar no formato devolvido pelo SDK.
+     *
+     * @return array<string,mixed>
+     */
+    public function toArray(bool $ignoreNullable = true, bool $toSnakeCase = false): array
+    {
+        $array = $this->traitToArray($ignoreNullable, $toSnakeCase);
+
+        unset($array['refundsList'], $array['refunds_list']);
+
+        return $array;
+    }
+
+    /**
+     * Todas as devoluções da transação.
+     *
+     * @return array<int,Refund>
+     */
+    public function getRefundsList(): array
+    {
+        return $this->refundsList;
     }
 
     public function getRefunds(): ?Refund

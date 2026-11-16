@@ -45,16 +45,23 @@ class Refunds
         return str_replace('__tid__', $this->tid, self::BASE_URL.$path);
     }
 
-    public function create(Amount $amount, Url $callback, ?string $tid = null): Refund
+    /**
+     * O callback é opcional na Rede: sem ele, vale a URL cadastrada no portal.
+     * Devoluções Pix são síncronas e aceitam apenas o valor.
+     */
+    public function create(Amount $amount, ?Url $callback = null, ?string $tid = null): Refund
     {
         if ($tid) {
             $this->tid = $tid;
         }
 
-        $response = $this->request->post($this->url(''), [
-            'amount' => $amount->getConvertedAmount(),
-            'urls' => [$callback->toArray()],
-        ]);
+        $payload = ['amount' => $amount->getConvertedAmount()];
+
+        if ($callback !== null) {
+            $payload['urls'] = [$callback->toArray()];
+        }
+
+        $response = $this->request->post($this->url(''), $payload);
 
         return new Refund(fromData: $this->retrieveResponse($response));
     }

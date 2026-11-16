@@ -3,6 +3,7 @@
 namespace eRede\Responses;
 
 use eRede\Classes\Link;
+use eRede\Classes\QrCodeResponse;
 use eRede\Traits\Attribute;
 use eRede\Traits\ToArray;
 
@@ -33,6 +34,11 @@ class Transaction
     public ?string $returnMessage = '';
 
     public ?array $links = null;
+
+    public ?string $orderId = null;
+
+    /** Presente apenas em solicitações de QR Code Pix. */
+    public ?QrCodeResponse $qrCodeResponse = null;
 
     public function __construct(
         ?string $reference = null,
@@ -70,6 +76,8 @@ class Transaction
                             $this->addLink(new Link(fromData: $linkData));
                         }
                     }
+                } elseif ($key === 'qrCodeResponse') {
+                    $this->qrCodeResponse = is_array($value) ? new QrCodeResponse(fromData: $value) : null;
                 } else {
                     $this->set($key, value: $value);
                 }
@@ -130,6 +138,30 @@ class Transaction
     public function getReturnMessage(): ?string
     {
         return $this->returnMessage;
+    }
+
+    public function getOrderId(): ?string
+    {
+        return $this->orderId;
+    }
+
+    public function setOrderId(?string $orderId): self
+    {
+        $this->orderId = $orderId;
+
+        return $this;
+    }
+
+    public function getQrCodeResponse(): ?QrCodeResponse
+    {
+        return $this->qrCodeResponse;
+    }
+
+    public function setQrCodeResponse(?QrCodeResponse $qrCodeResponse): self
+    {
+        $this->qrCodeResponse = $qrCodeResponse;
+
+        return $this;
     }
 
     public function getLinks(): ?array
