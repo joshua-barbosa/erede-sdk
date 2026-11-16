@@ -58,6 +58,37 @@ class ToArrayTest extends TestCase
         $this->assertArrayNotHasKey('cardNumber', $array);
     }
 
+    public function test_capture_false_e_enviado_para_autorizar_sem_capturar(): void
+    {
+        $array = (new Transaction(amount: 10.50, reference: 'pedido-1'))
+            ->creditCard('5448280000000007', '123', 12, 2030, 'JOAO DA SILVA')
+            ->capture(false)
+            ->toArray();
+
+        $this->assertArrayHasKey('capture', $array);
+        $this->assertFalse($array['capture']);
+    }
+
+    public function test_false_e_zero_sao_valores_validos_e_permanecem_no_payload(): void
+    {
+        $array = (new Transaction(amount: 0, reference: 'zero-dollar'))
+            ->creditCard('5448280000000007', '123', 12, 2030, 'JOAO DA SILVA')
+            ->setSubscription(false)
+            ->toArray();
+
+        $this->assertSame(0, $array['amount']);
+        $this->assertFalse($array['subscription']);
+    }
+
+    public function test_nulo_string_vazia_e_array_vazio_continuam_fora_do_payload(): void
+    {
+        $array = (new Transaction(amount: 10.50, reference: 'pedido-1'))
+            ->setSoftDescriptor('')
+            ->toArray();
+
+        $this->assertSame(['reference' => 'pedido-1', 'amount' => 1050], $array);
+    }
+
     public function test_debito_e_sempre_capturado(): void
     {
         $array = (new Transaction(amount: 10.50, reference: 'pedido-1'))

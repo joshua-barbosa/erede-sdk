@@ -20,10 +20,11 @@ trait ToArray
                 $key = self::toSnakeCase((string) $key);
             }
 
-            if ($ignoreNullable) {
-                if (! (is_null($value) === false && empty($value) === false && $value !== null)) {
-                    continue;
-                }
+            // Só "ausência de valor" é descartada. `false` e `0` são valores
+            // legítimos para a Rede: `capture: false` é o que pede captura
+            // posterior, e `amount: 0` é uma transação zero dollar.
+            if ($ignoreNullable && ($value === null || $value === '' || $value === [])) {
+                continue;
             }
 
             if ($value instanceof BackedEnum) {
